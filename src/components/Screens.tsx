@@ -119,7 +119,7 @@ export function ConfigError({ problems }: { problems: string[] }) {
       <div className="card" role="alert">
         <h1>La web no está configurada</h1>
         <ul>{problems.map((p) => <li key={p}>{p}</li>)}</ul>
-        <p>Crea <code>web/.env</code> a partir de <code>web/.env.example</code> y vuelve a iniciar <code>npm run dev</code> o a compilar.</p>
+        <p>Crea <code>.env</code> a partir de <code>.env.example</code> en la raíz de este repositorio y vuelve a iniciar <code>npm run dev</code> o a compilar.</p>
       </div>
     </main>
   );

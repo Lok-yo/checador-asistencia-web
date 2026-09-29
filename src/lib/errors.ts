@@ -13,7 +13,7 @@ export class AppError extends Error {
 
 type Raw = { code?: string; message?: string; details?: string; hint?: string; status?: number; statusCode?: string | number };
 
-const SETUP_HINT = 'Aplica en Supabase la migración 20260925180000_attendance_supervisors.sql (ver web/README.md).';
+const SETUP_HINT = 'Revisa la configuración de Supabase indicada en el README de este repositorio.';
 
 export function toAppError(err: unknown, status?: number): AppError {
   if (err instanceof AppError) return err;
