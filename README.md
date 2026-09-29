@@ -65,6 +65,24 @@ El service worker conserva los archivos públicos de la interfaz. Las peticiones
 
 La fotografía es evidencia visual. La comprobación biométrica ocurre en Android y Supabase no recibe una prueba criptográfica del sensor. La web no compara rostros ni realiza detección de vida.
 
+### Modo pantalla y control
+
+Al entrar en modo pantalla se selecciona la primera checada. El borde amarillo indica la selección. La lista usa dos columnas en pantallas amplias y una en pantallas estrechas; conserva el orden de más reciente a más antigua, de izquierda a derecha. Las tarjetas ocupan su altura real, sin un recuadro vacío debajo. Cuando no caben las checadas de la página, la lista se desplaza al navegar.
+
+| Tecla del control o teclado | Acción |
+|---|---|
+| Flechas ↑ ↓ ← → | Seleccionar la checada en esa dirección |
+| OK / Enter / Espacio | Abrir la foto seleccionada o activar el botón enfocado |
+| Atrás / Backspace / Esc | Cerrar la foto; desde la lista, salir de modo pantalla |
+| ↑ desde la primera fila | Seleccionar «Salir de modo pantalla» |
+| ↓ desde el botón de salir | Volver a la checada seleccionada |
+
+En la fotografía, las flechas permiten elegir entre cerrar y reintentar cuando existe un error. Al cerrarla se vuelve a la misma checada. Si llegan nuevos registros, se conserva la selección por su identificador; si el registro desaparece de la página, se selecciona la primera tarjeta disponible.
+
+Las teclas deben llegar al navegador como eventos de teclado. Se contemplan las flechas habituales, `Enter`/`Select` y los códigos de Atrás de webOS (`461`) y Tizen (`10009`) cuando el navegador los entrega. Esto requiere probar el televisor y su navegador concretos. Algunos navegadores consumen Esc para abandonar la pantalla completa: con una foto abierta se cierra la foto y se conserva la vista ampliada.
+
+**Esta PWA no se puede instalar directamente en Roku.** Roku no ofrece un navegador web, según su [documentación de soporte](https://support.roku.com/es-mx/article/can-i-browse-the-internet). Una aplicación ejecutada directamente en Roku requiere [SceneGraph y BrightScript](https://developer.roku.com/dev/docs/getting-started), un proyecto distinto. La web puede usarse en un navegador compatible o en una computadora conectada al televisor; la instalación como PWA depende del navegador.
+
 ## Compilar y publicar
 
 ```bash
@@ -96,6 +114,7 @@ Configura las variables en el hosting antes de compilar. Este repositorio no inc
 - `supabase/tests/supervisor_access.sql` pasó en el Supabase real (`supervisor_access: OK`) antes y después de unificar las políticas. Comprueba acceso propio, lectura del supervisor y denegación de escritura. Termina con `ROLLBACK` sin conservar sus datos de prueba.
 - Se verificaron RLS, permisos, publicación de Realtime y bucket privado de 2 MiB/JPEG. Los cuatro registros y las cuatro fotos existentes se conservaron; las definiciones y permisos de las funciones del móvil no cambiaron.
 - La API real rechazó la consulta anónima a `attendance_supervisors` con `401/42501`. El servidor Vite arrancó desde este repositorio y respondió correctamente a la petición HTTP local.
+- La navegación del modo pantalla se comprobó en Chromium con los componentes reales y datos e imagen de prueba en una página temporal: flechas, apertura, cierre, reintento, conservación del foco al cambiar la lista y desplazamiento hasta las 20 checadas. Se revisó el diseño en 1920×1080, 1280×720, 1024×768 y 390×844. La compatibilidad con un control físico sigue pendiente.
 - Queda por comprobar en un navegador el inicio de sesión, la visualización de fotos y la llegada de eventos reales de Realtime. Las pruebas simuladas del repositorio original no sustituyen esas comprobaciones.
 
 El asesor de seguridad conserva un aviso previo sobre [protección contra contraseñas filtradas desactivada](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection). El asesor de rendimiento solo informa que el [índice por fecha todavía no se ha utilizado](https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index); es nuevo y se conserva para las consultas del tablero.
@@ -108,5 +127,6 @@ El asesor de seguridad conserva un aviso previo sobre [protección contra contra
 4. Registra un movimiento desde la app móvil con el tablero abierto: debe aparecer y actualizar los conteos.
 5. Desconecta y recupera la red: el tablero debe volver a consultar los registros.
 6. Cierra sesión: deben desaparecer los datos y la fotografía abierta.
+7. En modo pantalla, usa flechas y OK para abrir una fotografía real. Atrás debe cerrarla y conservar la selección; otra pulsación de Atrás debe salir del modo. Repite con el control del televisor si su navegador puede abrir la web.
 
 Referencias: [RLS de Supabase](https://supabase.com/docs/guides/database/postgres/row-level-security), [Realtime con PostgreSQL](https://supabase.com/docs/guides/realtime/postgres-changes).

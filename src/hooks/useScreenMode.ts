@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { remoteAction } from '../lib/remote';
+
 type WakeLockLike = { release: () => Promise<void> };
 
 /**
@@ -50,11 +52,18 @@ export function useScreenMode() {
   useEffect(() => {
     if (!active) return;
     const onFullscreen = () => {
-      // Si el usuario salió de pantalla completa (Esc), también sale del modo.
-      if (usedFullscreen.current && !document.fullscreenElement) void exit();
+      if (!usedFullscreen.current || document.fullscreenElement) return;
+      usedFullscreen.current = false;
+      // Algunos navegadores consumen Esc para salir de pantalla completa.
+      // Si había una foto abierta, PhotoDialog la cierra y conserva la vista.
+      if (!document.querySelector('dialog[open]')) void exit();
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !document.querySelector('dialog[open]')) void exit();
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (remoteAction(e) === 'back' && !document.querySelector('dialog[open]')) {
+        e.preventDefault();
+        void exit();
+      }
     };
     const onVisible = () => {
       if (document.visibilityState === 'visible') void requestWakeLock();

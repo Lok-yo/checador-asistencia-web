@@ -22,6 +22,7 @@ export function Dashboard({ supervisorName, onSignOut, onSessionExpired }: {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [photo, setPhoto] = useState<FeedRow | null>(null);
+  const exitScreenRef = useRef<HTMLButtonElement>(null);
   const screen = useScreenMode();
 
   // Cambio de día a medianoche: si se estaba viendo "hoy", se avanza solo.
@@ -102,6 +103,8 @@ export function Dashboard({ supervisorName, onSignOut, onSessionExpired }: {
         highlightId={feed.highlightId}
         onOpenPhoto={setPhoto}
         busy={feed.phase === 'loading'}
+        screenMode={screen.active}
+        exitRef={exitScreenRef}
       />
     );
   }
@@ -124,7 +127,7 @@ export function Dashboard({ supervisorName, onSignOut, onSessionExpired }: {
         <ConnectionStatus status={feed.realtime} lastUpdated={feed.lastUpdated} refreshing={feed.refreshing} />
         <nav className="actions" aria-label="Acciones del tablero">
           {screen.active ? (
-            <button type="button" className="btn btn--light" onClick={() => void screen.exit()}>
+            <button ref={exitScreenRef} type="button" className="btn btn--light" onClick={() => void screen.exit()}>
               Salir de modo pantalla
             </button>
           ) : (
@@ -188,6 +191,12 @@ export function Dashboard({ supervisorName, onSignOut, onSessionExpired }: {
           )}
         </div>
 
+        {screen.active && (
+          <p className="screen-controls" id="screen-navigation-help">
+            ↑ ↓ ← → Elegir checada · OK / Enter Ver foto · Atrás Salir
+          </p>
+        )}
+
         {feed.error && feed.phase === 'ready' && (
           <div className="notice notice--warn" role="alert">
             <p>
@@ -227,7 +236,7 @@ export function Dashboard({ supervisorName, onSignOut, onSessionExpired }: {
         )}
       </section>
 
-      {photo && <PhotoDialog record={photo} onClose={closePhoto} onSessionExpired={onSessionExpired} />}
+      {photo && <PhotoDialog key={photo.id} record={photo} onClose={closePhoto} onSessionExpired={onSessionExpired} screenMode={screen.active} />}
     </div>
   );
 }

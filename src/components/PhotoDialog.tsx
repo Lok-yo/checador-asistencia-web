@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 
 import type { FeedRow } from '../hooks/useAttendanceFeed';
 import { toAppError } from '../lib/errors';
 import { movementLabel, PHOTO_BUCKET } from '../lib/queries';
 import { client } from '../lib/supabase';
+import { remoteAction } from '../lib/remote';
 import { formatFull } from '../lib/time';
 import { CloseIcon, EntryIcon, ExitIcon } from './Icons';
 
@@ -15,12 +16,14 @@ type PhotoState =
   | { status: 'ready'; objectUrl: string }
   | { status: 'error'; message: string };
 
-export function PhotoDialog({ record, onClose, onSessionExpired }: {
+export function PhotoDialog({ record, onClose, onSessionExpired, screenMode = false }: {
   record: FeedRow;
   onClose: () => void;
   onSessionExpired: () => void;
+  screenMode?: boolean;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
   const [state, setState] = useState<PhotoState>({ status: 'loading' });
   const objectUrl = useRef<string | null>(null);
   const attempt = useRef(0);
@@ -87,13 +90,64 @@ export function PhotoDialog({ record, onClose, onSessionExpired }: {
 
   useEffect(() => {
     const dialog = dialogRef.current;
+    const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     if (dialog && !dialog.open) dialog.showModal();
+    closeRef.current?.focus({ preventScroll: true });
+    return () => {
+      dialog?.close();
+      const target = returnFocus?.isConnected
+        ? returnFocus
+        : document.querySelector<HTMLButtonElement>('[data-screen-record][tabindex="0"]');
+      target?.focus({ preventScroll: true });
+      if (target?.dataset.screenRecord) target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    };
+  }, []);
+
+  useEffect(() => {
     start();
     return () => {
       controller.current?.abort();
       release();
     };
   }, [start]);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    // Reintentar desaparece al cargar: el control debe conservar un botón activo.
+    if (dialog?.open && !dialog.contains(document.activeElement)) {
+      closeRef.current?.focus({ preventScroll: true });
+    }
+  }, [state.status]);
+
+  useEffect(() => {
+    if (!screenMode) return;
+    const onFullscreen = () => {
+      if (!document.fullscreenElement && dialogRef.current?.open) onClose();
+    };
+    document.addEventListener('fullscreenchange', onFullscreen);
+    return () => document.removeEventListener('fullscreenchange', onFullscreen);
+  }, [screenMode, onClose]);
+
+  const onRemoteKey = (event: KeyboardEvent<HTMLDialogElement>) => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const action = remoteAction(event);
+    if (!action) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (action === 'back') {
+      onClose();
+      return;
+    }
+    const buttons = Array.from(dialogRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? []);
+    const current = document.activeElement;
+    if (action === 'confirm') {
+      if (!event.repeat && current instanceof HTMLButtonElement && buttons.includes(current)) current.click();
+      return;
+    }
+    const index = buttons.findIndex((button) => button === current);
+    const next = action === 'down' || action === 'right' ? index + 1 : index - 1;
+    buttons[Math.max(0, Math.min(buttons.length - 1, next))]?.focus({ preventScroll: true });
+  };
 
   const Icon = record.type === 'entry' ? EntryIcon : ExitIcon;
 
@@ -103,6 +157,7 @@ export function PhotoDialog({ record, onClose, onSessionExpired }: {
       className="photo"
       aria-labelledby="photo-title"
       onCancel={(e) => { e.preventDefault(); onClose(); }}
+      onKeyDown={onRemoteKey}
       onClick={(e) => { if (e.target === dialogRef.current) onClose(); }}
     >
       <div className="photo__panel">
@@ -114,7 +169,7 @@ export function PhotoDialog({ record, onClose, onSessionExpired }: {
             </p>
             <p className="photo__when">{formatFull(record.created_at)}</p>
           </div>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Cerrar fotografía">
+          <button ref={closeRef} type="button" className="icon-btn" onClick={onClose} aria-label="Cerrar fotografía">
             <CloseIcon />
           </button>
         </header>
@@ -138,6 +193,7 @@ export function PhotoDialog({ record, onClose, onSessionExpired }: {
         <p className="photo__note">
           Selfie tomada en la app móvil como evidencia visual. Esta web no compara rostros.
         </p>
+        {screenMode && <p className="photo__controls">Atrás / Esc: volver a la checada · OK: activar botón</p>}
       </div>
     </dialog>
   );
