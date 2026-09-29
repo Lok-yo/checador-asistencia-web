@@ -28,7 +28,7 @@ npm ci
 cp .env.example .env
 ```
 
-El repositorio es privado: GitHub te pedirá una cuenta con acceso. En Windows, sustituye el último comando por `copy .env.example .env`.
+El repositorio es público y puedes clonarlo sin iniciar sesión en GitHub. En Windows, sustituye el último comando por `copy .env.example .env`.
 
 Edita `.env` antes de iniciar Vite. Los valores de esta tabla son **ejemplos**, no credenciales utilizables:
 
