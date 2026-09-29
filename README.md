@@ -1,87 +1,149 @@
-# Checador de asistencia: web de supervisión
+# Checador de asistencia · Web de supervisión
 
-Web de consulta para supervisores: muestra las entradas, salidas y fotografías registradas desde la app móvil. Usa React, Vite, TypeScript y Supabase Auth, PostgreSQL, Storage y Realtime. Incluye un modo de pantalla y la instalación como PWA.
+Aplicación en español para **consultar entradas, salidas y fotografías del checador** con una cuenta autorizada como supervisor. Está desarrollada con React, Vite, TypeScript y Supabase; incluye filtros, actualización por Realtime, modo pantalla e instalación como PWA en navegadores compatibles.
 
-Este repositorio contiene exclusivamente la web. La app Android con Expo Go está en [Lok-yo/checador-asistencia](https://github.com/Lok-yo/checador-asistencia). Ambos clientes usan el mismo proyecto Supabase; separar el código no requiere separar los datos.
+El sistema tiene dos repositorios que comparten el mismo backend:
 
-## Iniciar la web
+| Repositorio | Responsabilidad |
+|---|---|
+| [checador-asistencia](https://github.com/Lok-yo/checador-asistencia) | Registro de cuentas y checadas con biometría y selfie desde Expo Go en Android. |
+| **[checador-asistencia-web](https://github.com/Lok-yo/checador-asistencia-web)** · este proyecto | Consulta de registros y evidencia visual para supervisores. |
 
-Requiere Node.js 20.19+ o 22.12+ y una cuenta existente de Supabase Auth autorizada como supervisor.
+La web utiliza las cuentas y los datos de la app móvil. El permiso de supervisor se asigna en Supabase; la interfaz no permite crear checadas ni conceder permisos.
+
+## Inicio rápido
+
+### Requisitos
+
+- Git, npm y Node.js. Para trabajar con ambos repositorios, usa **22.13 o posterior dentro de la rama 22**, o **24.3 o posterior dentro de la rama 24**. Vite requiere al menos Node 20.19 o 22.12, pero Expo SDK 57 exige una versión superior dentro de la rama 22.
+- Un navegador moderno, conexión a internet y una cuenta de Supabase Auth existente **autorizada como supervisor**.
+- URL y clave publicable del mismo proyecto Supabase que utiliza la app móvil. El backend de esta entrega ya está configurado; para otro proyecto, sigue [Configuración de Supabase](#configuración-de-supabase).
+
+### Instalar y configurar
 
 ```bash
 git clone https://github.com/Lok-yo/checador-asistencia-web.git
 cd checador-asistencia-web
 npm ci
 cp .env.example .env
-# Completa las variables de .env antes de continuar.
+```
+
+El repositorio es privado: GitHub te pedirá una cuenta con acceso. En Windows, sustituye el último comando por `copy .env.example .env`.
+
+Edita `.env` antes de iniciar Vite. Los valores de esta tabla son **ejemplos**, no credenciales utilizables:
+
+| Variable | Ejemplo | Para qué sirve |
+|---|---|---|
+| `VITE_SUPABASE_URL` | `https://your-project-ref.supabase.co` | URL del backend compartido con la app. |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_your_key` | Clave pública del mismo proyecto. |
+| `VITE_TIME_ZONE` | `America/Hermosillo` | Zona IANA para mostrar horas y consultar el día correcto. |
+
+Obtén la URL y la clave publicable desde **Connect** en el panel de Supabase; las claves también se administran en **Settings → API Keys**. Las variables `VITE_*` llegan al navegador: **nunca coloques una clave `service_role`, `sb_secret_...` ni un secreto administrativo**. La web rechaza claves secretas y JWT cuyo rol sea `service_role`.
+
+`.env` está excluido de Git; [.env.example](.env.example) contiene solo ejemplos. Usa la misma zona que `EXPO_PUBLIC_TIME_ZONE` en la app móvil. Reinicia Vite o recompila después de cambiar la configuración.
+
+### Abrir la web
+
+```bash
 npm run dev
 ```
 
-Abre `http://localhost:5173`. En Windows, usa `copy .env.example .env`.
+Abre **http://localhost:5173** e inicia sesión con la cuenta autorizada. Si el puerto está ocupado, Vite puede elegir otro: utiliza la dirección que muestra la terminal.
 
-| Variable | Valor |
+Para abrirla desde otro dispositivo en la misma red, inicia con `npm run dev -- --host 0.0.0.0` y usa la IP local de la computadora con el puerto indicado. Un servidor de desarrollo no sustituye al despliegue HTTPS necesario para la PWA fuera de localhost.
+
+## Uso del tablero
+
+1. Inicia sesión. La web comprueba el permiso de supervisor en el servidor; una cuenta normal recibe un mensaje de acceso denegado.
+2. Selecciona una fecha y, si lo necesitas, busca por nombre o apellido.
+3. Consulta los movimientos, sus horarios y la fotografía de cada checada.
+4. Usa **Modo pantalla** para mostrar el reloj, los conteos y las checadas más recientes en una pantalla amplia.
+
+| Función | Comportamiento |
 |---|---|
-| `VITE_SUPABASE_URL` | URL del mismo proyecto usado por la app móvil |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Clave pública `sb_publishable_...` del mismo proyecto |
-| `VITE_TIME_ZONE` | `America/Hermosillo` u otra zona IANA válida |
+| Fecha y búsqueda | Muestra 20 movimientos por página, del más reciente al más antiguo. La búsqueda limita coincidencias a 200 perfiles y avisa si necesitas precisar el nombre. |
+| Conteos | Entradas, salidas y movimientos de todo el día seleccionado; no cambian al filtrar por nombre ni indican cuántas personas están dentro. |
+| Hora | Los registros usan la fecha del servidor en UTC y se muestran según `VITE_TIME_ZONE`. El reloj de la pantalla usa la hora del equipo. |
+| Fotografías | Se solicitan al abrirlas mediante una URL firmada de 60 segundos; el bucket permanece privado. |
+| Realtime | Al recibir una checada se actualiza la lista y se vuelven a consultar los conteos. También se consulta al reconectar, recuperar la red o volver a la pestaña. |
+| Cerrar sesión | Cierra la sesión de la web sin cerrar la del celular y retira los datos de la interfaz. |
 
-La configuración local preparada en esta entrega apunta a `https://kqabddlasmvipuskvnvr.supabase.co`, igual que la app móvil. El archivo `.env` está excluido de Git. `.env.example` solo contiene valores de ejemplo.
+### Modo pantalla y control remoto
 
-Las variables `VITE_*` llegan al navegador al compilar. Usa únicamente la clave pública; la web rechaza claves `sb_secret_...` y JWT con rol `service_role`. Reinicia Vite o recompila después de modificar `.env`.
-
-## Configurar Supabase
-
-Las migraciones de este repositorio **amplían el backend de la app móvil**. Requieren sus tablas `profiles`, `attendance`, el esquema `attendance_private` y el bucket privado `attendance-photos`. Las migraciones iniciales pertenecen al repositorio móvil. No vuelvas a ejecutarlas sobre el proyecto existente.
-
-El proyecto de esta entrega es **`kqabddlasmvipuskvnvr`**. Ya está configurado y tiene una cuenta autorizada por el propietario. Comprueba el identificador en el panel antes de ejecutar SQL.
-
-Para reproducir la configuración en otro proyecto que ya tenga el backend móvil, aplica estas migraciones en orden mediante el MCP de Supabase o en SQL Editor:
-
-1. `supabase/migrations/20260929212353_attendance_supervisors.sql`: crea la lista de supervisores, su función de autorización, políticas de lectura e índice por fecha.
-2. `supabase/migrations/20260929212400_attendance_realtime.sql`: habilita los eventos de `attendance` en `supabase_realtime`.
-3. `supabase/migrations/20260929212642_attendance_read_policies.sql`: unifica las políticas de lectura de `profiles` y `attendance` conservando el mismo acceso de dueño o supervisor. Storage mantiene sus políticas de lectura separadas.
-
-Después, abre `supabase/scripts/autorizar_supervisor.sql` y ejecuta sus pasos por separado: localiza la cuenta, sustituye el UUID de ejemplo y autorízala. El script se detiene si no sustituyes el UUID o si la cuenta no existe. El permiso se administra en el servidor; ningún cliente puede asignárselo.
-
-Ejecuta `supabase/scripts/verificar_web.sql` para revisar RLS, permisos, políticas, privacidad del bucket y publicación de Realtime. No modifica datos.
-
-Los usuarios normales conservan el acceso a sus propios registros. Las cuentas autorizadas como supervisor pueden consultar todos los perfiles, registros y fotos del checador. El rol supervisor no concede escritura directa en esas tablas ni en la lista de supervisores. La app móvil sigue finalizando movimientos mediante `finalize_attendance`.
-
-### Correo y cuentas
-
-El propietario desactivó la confirmación de correo en este proyecto para la demostración académica. Una cuenta registrada desde la app puede iniciar sesión y, una vez autorizada, entrar en la web. Si activas de nuevo la confirmación, las cuentas tendrán que cumplir los requisitos de Supabase Auth. Los ajustes de confirmación y SMTP se administran en el panel de Supabase; no se cambian desde esta web.
-
-## Funcionamiento
-
-- Inicio de sesión con correo y contraseña. Una cuenta sin permiso de supervisor recibe un mensaje de acceso denegado.
-- Consulta por fecha y nombre, con 20 movimientos por página y conteos de todo el día seleccionado.
-- Fechas guardadas en UTC y mostradas según `VITE_TIME_ZONE`.
-- Fotografías privadas solicitadas al abrir el diálogo mediante una URL firmada de 60 segundos.
-- Actualización por Realtime y nueva consulta al reconectar, recuperar la red o volver a la pestaña.
-- Cierre de sesión local en la web, sin cerrar la sesión del celular.
-- Modo de pantalla con reloj y movimientos recientes; las capacidades de pantalla completa y bloqueo de suspensión dependen del navegador.
-
-El service worker conserva los archivos públicos de la interfaz. Las peticiones a Supabase y las fotos usan la red y no se guardan en su caché. Sin conexión se muestra la interfaz con un aviso; los registros requieren conexión.
-
-La fotografía es evidencia visual. La comprobación biométrica ocurre en Android y Supabase no recibe una prueba criptográfica del sensor. La web no compara rostros ni realiza detección de vida.
-
-### Modo pantalla y control
-
-Al entrar en modo pantalla se selecciona la primera checada. El borde amarillo indica la selección. La lista usa dos columnas en pantallas amplias y una en pantallas estrechas; conserva el orden de más reciente a más antigua, de izquierda a derecha. Las tarjetas ocupan su altura real, sin un recuadro vacío debajo. Cuando no caben las checadas de la página, la lista se desplaza al navegar.
+El modo pantalla conserva la fecha y la búsqueda activas, vuelve a la primera página y muestra **hasta las 20 checadas más recientes de esa vista**. Selecciona inicialmente la primera tarjeta; el borde amarillo indica el foco. La lista usa dos columnas en pantallas amplias y una en pantallas estrechas, en orden de izquierda a derecha y de arriba abajo. Se desplaza al navegar cuando las tarjetas no caben.
 
 | Tecla del control o teclado | Acción |
 |---|---|
-| Flechas ↑ ↓ ← → | Seleccionar la checada en esa dirección |
-| OK / Enter / Espacio | Abrir la foto seleccionada o activar el botón enfocado |
-| Atrás / Backspace / Esc | Cerrar la foto; desde la lista, salir de modo pantalla |
-| ↑ desde la primera fila | Seleccionar «Salir de modo pantalla» |
-| ↓ desde el botón de salir | Volver a la checada seleccionada |
+| Flechas ↑ ↓ ← → | Seleccionar la checada en esa dirección. |
+| OK / Enter / Espacio | Abrir la foto seleccionada o activar el botón enfocado. |
+| Atrás / Backspace / Esc | Cerrar la foto; desde la lista, salir del modo pantalla. |
+| ↑ desde la primera fila | Enfocar «Salir de modo pantalla». |
+| ↓ desde el botón de salir | Volver a la checada seleccionada. |
 
-En la fotografía, las flechas permiten elegir entre cerrar y reintentar cuando existe un error. Al cerrarla se vuelve a la misma checada. Si llegan nuevos registros, se conserva la selección por su identificador; si el registro desaparece de la página, se selecciona la primera tarjeta disponible.
+En el diálogo de fotografía, las flechas permiten elegir entre cerrar y reintentar cuando hay un error. Al cerrar se recupera la selección. Si llegan registros nuevos, se conserva la tarjeta por su identificador; si deja de estar en la página, se selecciona la primera disponible.
 
-Las teclas deben llegar al navegador como eventos de teclado. Se contemplan las flechas habituales, `Enter`/`Select` y los códigos de Atrás de webOS (`461`) y Tizen (`10009`) cuando el navegador los entrega. Esto requiere probar el televisor y su navegador concretos. Algunos navegadores consumen Esc para abandonar la pantalla completa: con una foto abierta se cierra la foto y se conserva la vista ampliada.
+El navegador debe entregar las pulsaciones como eventos de teclado. Se contemplan las flechas habituales, `Enter`/`Select` y los códigos de Atrás de webOS (`461`) y Tizen (`10009`) cuando estén disponibles. **Hace falta probar el control y el navegador del televisor concreto.** Si el navegador consume Esc para salir de pantalla completa mientras hay una foto abierta, se cierra la foto y se conserva la vista ampliada. La pantalla completa y el bloqueo de suspensión dependen del navegador.
 
-**Esta PWA no se puede instalar directamente en Roku.** Roku no ofrece un navegador web, según su [documentación de soporte](https://support.roku.com/es-mx/article/can-i-browse-the-internet). Una aplicación ejecutada directamente en Roku requiere [SceneGraph y BrightScript](https://developer.roku.com/dev/docs/getting-started), un proyecto distinto. La web puede usarse en un navegador compatible o en una computadora conectada al televisor; la instalación como PWA depende del navegador.
+### PWA y límite de Roku
+
+La instalación como PWA depende del navegador y requiere **HTTPS**, salvo en localhost. Cuando esté disponible, utiliza la opción del navegador para instalar la aplicación. La interfaz avisa cuando hay una versión nueva y permite actualizarla.
+
+El service worker conserva los archivos públicos de la interfaz. Las consultas a Supabase y las fotografías pasan por la red y no se guardan en su caché. Si se pierde la conexión pueden permanecer visibles los últimos datos cargados, con un aviso; no hay un historial disponible para consultar sin conexión.
+
+**Esta PWA no se instala ni se ejecuta directamente en Roku.** Roku no ofrece navegador web, según su [documentación de soporte](https://support.roku.com/es-mx/article/can-i-browse-the-internet). Una aplicación propia para Roku requiere [SceneGraph y BrightScript](https://developer.roku.com/dev/docs/getting-started) y sería otro proyecto. Esta web puede abrirse en un navegador compatible o en una computadora conectada al televisor.
+
+## Configuración de Supabase
+
+### Usar el backend existente
+
+El proyecto de esta entrega es **`kqabddlasmvipuskvnvr`**, compartido con la app móvil. Las seis migraciones del sistema ya se aplicaron mediante el MCP de Supabase y se autorizó la cuenta indicada por el propietario. Para conectarte, configura `.env` con ese proyecto; **no vuelvas a ejecutar las migraciones iniciales**.
+
+La confirmación de correo fue desactivada por el propietario para la demostración. No es una condición del rol supervisor: si vuelves a activarla, la cuenta deberá confirmar su correo para iniciar sesión. Ese ajuste y SMTP se administran en el panel de Supabase, no desde la web. La recepción real de correo no se verificó.
+
+### Reproducir el backend en un proyecto nuevo
+
+Las migraciones web **amplían las del móvil**. Revisa el proyecto de destino y aplica los archivos de esta tabla en orden mediante `apply_migration` del MCP o ejecutando su contenido en SQL Editor con permisos administrativos. Si el backend móvil ya existe, revisa su historial y comienza en el paso 4.
+
+| Orden | Origen y migración | Resultado |
+|---|---|---|
+| 1 | Móvil · [20260924054226_attendance_initial.sql](https://github.com/Lok-yo/checador-asistencia/blob/main/supabase/migrations/20260924054226_attendance_initial.sql) | Tablas, perfiles automáticos, RLS, bucket privado y RPC inicial. |
+| 2 | Móvil · [20260924055128_private_rpc.sql](https://github.com/Lok-yo/checador-asistencia/blob/main/supabase/migrations/20260924055128_private_rpc.sql) | Lógica privilegiada en el esquema `attendance_private`. |
+| 3 | Móvil · [20260924060046_monotonic_server_time.sql](https://github.com/Lok-yo/checador-asistencia/blob/main/supabase/migrations/20260924060046_monotonic_server_time.sql) | Tiempo del servidor y orden de movimientos simultáneos. |
+| 4 | Web · [20260929212353_attendance_supervisors.sql](supabase/migrations/20260929212353_attendance_supervisors.sql) | Lista de supervisores, autorización, lectura global e índice por fecha. |
+| 5 | Web · [20260929212400_attendance_realtime.sql](supabase/migrations/20260929212400_attendance_realtime.sql) | Publicación de `attendance` en `supabase_realtime`. |
+| 6 | Web · [20260929212642_attendance_read_policies.sql](supabase/migrations/20260929212642_attendance_read_policies.sql) | Políticas de lectura de dueño o supervisor en `profiles` y `attendance`; Storage conserva sus políticas separadas. |
+
+No dupliques las migraciones móviles dentro de este repositorio. Ambos repos contienen partes de una misma historia de base de datos: el MCP `apply_migration` registra esa historia; ejecutar SQL manualmente en SQL Editor no lo hace. Esta entrega no incluye configuración local de Supabase CLI ni un flujo de `db push` independiente por repositorio.
+
+### Autorizar un supervisor
+
+La cuenta debe existir en Supabase Auth; puedes crearla mediante el registro de la app móvil. Después:
+
+1. Abre [autorizar_supervisor.sql](supabase/scripts/autorizar_supervisor.sql) en SQL Editor.
+2. Ejecuta **solo el paso 1** para localizar la cuenta y copiar su UUID.
+3. Sustituye el UUID de ejemplo en `v_user` y ejecuta el bloque del **paso 2**. El script se detiene si dejas el ejemplo o la cuenta no existe.
+4. Ejecuta el **paso 3** para comprobar la autorización. Inicia sesión en la web; si estaba abierta con acceso denegado, vuelve a comprobar el acceso o inicia sesión de nuevo.
+
+El script incluye una instrucción comentada para retirar el permiso más adelante. Solo un administrador del backend puede modificar `attendance_supervisors`; la clave pública y la interfaz no conceden ese permiso.
+
+### Verificar la configuración
+
+Ejecuta [verificar_web.sql](supabase/scripts/verificar_web.sql) desde SQL Editor. Es una consulta de **solo lectura**. Comprueba:
+
+- RLS activo y al menos una cuenta en `attendance_supervisors`.
+- `authenticated` con permiso `SELECT` en esa tabla y `anon` sin permisos.
+- Políticas de lectura propias y de supervisor; bucket privado, JPEG y límite de **2 MiB**.
+- `attendance` incluida en la publicación `supabase_realtime`.
+
+Las pruebas de [supervisor_access.sql](supabase/tests/supervisor_access.sql) crean datos temporales y validan acceso propio, lectura del supervisor y denegación de escritura. Terminan con `ROLLBACK`; son pruebas del backend y requieren privilegios administrativos.
+
+### Seguridad y alcance de los permisos
+
+Los usuarios normales conservan acceso únicamente a sus datos. Un supervisor puede consultar **todos los perfiles, registros y fotografías del checador**; ese permiso no habilita escritura directa en las tablas ni administración de cuentas. Las contraseñas se gestionan exclusivamente mediante Supabase Auth.
+
+Los movimientos siguen finalizándose desde la app mediante `finalize_attendance`, con las reglas de entrada/salida, propiedad de foto, tiempo del servidor y protección contra duplicados. Separar los repositorios no cambia esas reglas.
+
+**Límite de confianza:** la fotografía es evidencia visual. Android comprueba la biometría localmente y Supabase no recibe una prueba criptográfica del sensor; la web no compara rostros ni detecta vida.
 
 ## Compilar y publicar
 
@@ -90,43 +152,89 @@ npm run build
 npm run preview
 ```
 
-`npm run build` comprueba TypeScript y genera `dist/`. `npm run preview` sirve el resultado en `http://localhost:4173`. Para consultar desde otro dispositivo en la misma red, usa `npm run dev -- --host 0.0.0.0`; la instalación PWA fuera de localhost requiere HTTPS.
+`build` comprueba TypeScript y genera **`dist/`** con la web y la PWA. `preview` sirve esa compilación en **http://localhost:4173** para revisión local; no es un servidor de producción. Usa la dirección real indicada por Vite si el puerto está ocupado.
 
-Para un hosting estático que sirva la aplicación en la raíz del dominio:
+Para un hosting estático que publique en la raíz del dominio:
 
 | Ajuste | Valor |
 |---|---|
-| Directorio del proyecto | Raíz de este repositorio |
+| Directorio del proyecto | Raíz de este repositorio. |
 | Instalación | `npm ci` |
 | Compilación | `npm run build` |
 | Directorio publicado | `dist` |
-| Variables | Las tres variables `VITE_*` |
+| Variables previas a la compilación | Las tres variables `VITE_*` de [.env.example](.env.example). |
+| Conexión | HTTPS para la PWA y las capacidades del navegador que lo requieran. |
 
-Configura las variables en el hosting antes de compilar. Este repositorio no incluye una integración con Roku. La configuración actual usa la raíz `/`; un hosting bajo una subruta necesita ajustar `base` de Vite y las rutas del manifiesto antes de desplegar.
+La configuración actual usa `/` como raíz. Para publicar bajo una subruta debes ajustar `base` de Vite y las rutas del manifiesto antes de compilar. Después de cambiar las variables del hosting, vuelve a generar y publicar `dist/`.
 
-## Estado de la entrega
+## Estructura y archivos versionados
 
-- La web se extrajo del directorio `web/` de `TheRoDoX09/ChecadorWeb`, preservando la autoría de Rodolfo Herrera Sosa en el historial Git.
-- Se copiaron únicamente las migraciones y los scripts necesarios para la web. La aplicación Expo tiene su propio repositorio y sus propias dependencias.
-- Se corrigieron las rutas de configuración y la documentación para ejecutar la web desde su nueva raíz.
-- `npm ci` y `npm run build` terminaron correctamente; TypeScript y la compilación PWA pasaron. La auditoría de las dependencias instaladas no reportó vulnerabilidades.
-- Mediante MCP se aplicaron las tres migraciones web y se autorizó la cuenta indicada por el propietario. Sus versiones locales coinciden con el historial remoto.
-- `supabase/tests/supervisor_access.sql` pasó en el Supabase real (`supervisor_access: OK`) antes y después de unificar las políticas. Comprueba acceso propio, lectura del supervisor y denegación de escritura. Termina con `ROLLBACK` sin conservar sus datos de prueba.
-- Se verificaron RLS, permisos, publicación de Realtime y bucket privado de 2 MiB/JPEG. Los cuatro registros y las cuatro fotos existentes se conservaron; las definiciones y permisos de las funciones del móvil no cambiaron.
-- La API real rechazó la consulta anónima a `attendance_supervisors` con `401/42501`. El servidor Vite arrancó desde este repositorio y respondió correctamente a la petición HTTP local.
-- La navegación del modo pantalla se comprobó en Chromium con los componentes reales y datos e imagen de prueba en una página temporal: flechas, apertura, cierre, reintento, conservación del foco al cambiar la lista y desplazamiento hasta las 20 checadas. Se revisó el diseño en 1920×1080, 1280×720, 1024×768 y 390×844. La compatibilidad con un control físico sigue pendiente.
-- Queda por comprobar en un navegador el inicio de sesión, la visualización de fotos y la llegada de eventos reales de Realtime. Las pruebas simuladas del repositorio original no sustituyen esas comprobaciones.
+| Ruta | Responsabilidad |
+|---|---|
+| [src/components/Dashboard.tsx](src/components/Dashboard.tsx) | Tablero, filtros y modo pantalla. |
+| [src/components/RecordList.tsx](src/components/RecordList.tsx), [PhotoDialog.tsx](src/components/PhotoDialog.tsx) | Lista, selección y consulta de fotos privadas. |
+| [src/hooks/](src/hooks/) | Consultas, Realtime, navegación con control y pantalla completa. |
+| [src/state/session.tsx](src/state/session.tsx) | Autenticación y comprobación del permiso de supervisor. |
+| [src/lib/](src/lib/) | Configuración, consultas, fechas, errores y teclas del control. |
+| [vite.config.ts](vite.config.ts), [public/](public/) | Compilación, service worker, manifiesto e iconos de la PWA. |
+| [supabase/](supabase/) | Migraciones, autorización de supervisores, diagnóstico y pruebas SQL. |
+| [.impeccable/config.json](.impeccable/config.json) | Criterios y excepciones del detector de diseño usado en desarrollo. |
 
-El asesor de seguridad conserva un aviso previo sobre [protección contra contraseñas filtradas desactivada](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection). El asesor de rendimiento solo informa que el [índice por fecha todavía no se ha utilizado](https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index); es nuevo y se conserva para las consultas del tablero.
+### ¿Deben estar `supabase/` y `.impeccable/` en GitHub?
 
-## Comprobación con datos reales
+**`supabase/`: sí.** Es código fuente del backend de esta web: conserva políticas, funciones y scripts necesarios para reproducir y revisar su acceso a los datos. No contiene una copia de las cuentas, fotografías ni credenciales; los scripts usan valores de ejemplo.
 
-1. Revisa los resultados de `verificar_web.sql`. La cuenta indicada por el propietario ya está autorizada.
-2. Inicia sesión con esa cuenta: selecciona una fecha con checadas y comprueba nombres, movimientos, conteos y una fotografía real.
-3. Inicia sesión con otra cuenta sin permiso: debe mostrar acceso denegado.
-4. Registra un movimiento desde la app móvil con el tablero abierto: debe aparecer y actualizar los conteos.
-5. Desconecta y recupera la red: el tablero debe volver a consultar los registros.
-6. Cierra sesión: deben desaparecer los datos y la fotografía abierta.
-7. En modo pantalla, usa flechas y OK para abrir una fotografía real. Atrás debe cerrarla y conservar la selección; otra pulsación de Atrás debe salir del modo. Repite con el control del televisor si su navegador puede abrir la web.
+**`.impeccable/`: es opcional y puede conservarse.** Comparte la configuración del detector de diseño entre quienes trabajan en el repositorio. La configuración actual documenta una excepción acotada en `src/styles.css` y no contiene secretos. La aplicación, Vite y Supabase no la necesitan para funcionar.
 
-Referencias: [RLS de Supabase](https://supabase.com/docs/guides/database/postgres/row-level-security), [Realtime con PostgreSQL](https://supabase.com/docs/guides/realtime/postgres-changes).
+Al desplegar, publica únicamente **`dist/`**. Estas carpetas son fuentes y herramientas del repositorio; no se incluyen en el directorio de la aplicación generado por Vite. Tampoco se versionan `.env`, `node_modules/` ni las compilaciones locales.
+
+| Comando | Uso |
+|---|---|
+| `npm ci` | Instalar las versiones de [package-lock.json](package-lock.json). |
+| `npm run dev` | Iniciar Vite para desarrollo. |
+| `npm run typecheck` | Comprobar TypeScript. |
+| `npm run build` | Comprobar TypeScript y generar `dist/`. |
+| `npm run preview` | Revisar localmente la compilación generada. |
+
+## Diagnóstico rápido
+
+| Problema | Qué revisar |
+|---|---|
+| Pantalla de configuración incompleta | Completa las variables de `.env` con el mismo proyecto que la app; reinicia Vite o recompila. |
+| Correo o contraseña rechazados | Verifica las credenciales, la confirmación de correo y los ajustes de Supabase Auth. |
+| Acceso denegado tras iniciar sesión | Comprueba la cuenta en `attendance_supervisors`; estar registrado no concede supervisión. |
+| No aparecen registros | Revisa la fecha, la zona horaria, el filtro de nombre y `verificar_web.sql`. |
+| No se abre una foto | Comprueba la existencia del objeto y las políticas de lectura de Storage; usa **Reintentar** para obtener otro enlace. |
+| No llegan movimientos nuevos | Revisa la conexión y la publicación de Realtime; usa **Actualizar** para volver a consultar. |
+| No se ofrece instalar la PWA o falla el control | Comprueba HTTPS y las capacidades del navegador y dispositivo; Roku requiere una aplicación distinta. |
+
+## Verificación y demostración
+
+**Resultados registrados hasta el 29 de septiembre de 2026.** Se distingue la configuración comprobada de las pruebas con datos reales que faltan:
+
+| Comprobación | Resultado registrado |
+|---|---|
+| Herramientas locales | Instalación, TypeScript, compilación PWA y arranque HTTP de Vite completados. |
+| MCP y PostgreSQL | Tres migraciones web aplicadas, cuenta indicada por el propietario autorizada, RLS, permisos, bucket y publicación de Realtime revisados. Las pruebas de acceso propias y de supervisor superadas con datos temporales y `ROLLBACK`. |
+| API real | Rechazo de consulta anónima a `attendance_supervisors` comprobado. |
+| Chromium con datos de prueba | Flechas, apertura/cierre de foto, reintento, conservación de selección y desplazamiento comprobados con los componentes reales. Diseño revisado en 1920×1080, 1280×720, 1024×768 y 390×844. |
+| Uso observado por el propietario | El usuario mostró el tablero funcionando en modo pantalla mediante una captura. |
+
+Las pruebas de Chromium utilizaron registros e imagen de prueba, no la autenticación ni fotografías reales del proyecto. Queda pendiente comprobar en navegador el inicio de sesión, la foto real y la actualización de Realtime de extremo a extremo; también el control físico y la instalación en el dispositivo elegido. Las comprobaciones del asesor de Supabase son una revisión puntual, no una garantía permanente de seguridad.
+
+### Lista para la demostración con datos reales
+
+- [ ] Iniciar sesión como supervisor y comprobar fecha, nombres, conteos y una fotografía real.
+- [ ] Entrar con una cuenta sin permiso y comprobar el acceso denegado.
+- [ ] Registrar entrada o salida desde la app con la web abierta; comprobar el nuevo movimiento y los conteos.
+- [ ] Perder y recuperar la red; comprobar que se vuelve a consultar el backend.
+- [ ] Usar flechas, OK y Atrás en modo pantalla; abrir una foto, volver a la selección y salir del modo. Repetir con el control físico si el navegador de la televisión puede abrir la web.
+- [ ] Cerrar sesión y comprobar que desaparecen los datos y la foto abierta.
+
+## Origen y referencias
+
+La web se extrajo del directorio `web/` de `TheRoDoX09/ChecadorWeb`, conservando la autoría de **Rodolfo Herrera Sosa** en el historial Git. Este repositorio mantiene sus dependencias y código independientes de la aplicación Expo.
+
+- [Requisitos de Vite](https://vite.dev/guide/), [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/).
+- [Claves API de Supabase](https://supabase.com/docs/guides/getting-started/api-keys), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [Realtime con PostgreSQL](https://supabase.com/docs/guides/realtime/postgres-changes).
+- [Migraciones de Supabase](https://supabase.com/docs/guides/deployment/database-migrations), [SMTP](https://supabase.com/docs/guides/auth/auth-smtp).
