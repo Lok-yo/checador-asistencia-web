@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "src/styles.css"
+        ],
+        "createdAt": "2026-09-29T22:49:44.414Z",
+        "reason": "Agent review: L72 is severity feedback for alerts; L147 separates definition-list counters rather than decorating cards; L174 and L263 preserve the entry/exit color markers visible in the supplied screenshot and the incumbent clock-card design. Remote focus uses a separate full yellow border. Retain this intentional functional design only in src/styles.css."
+      }
+    ]
+  }
+}
