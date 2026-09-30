@@ -15,6 +15,7 @@ export type RealtimeStatus = 'connecting' | 'live' | 'reconnecting' | 'offline';
 
 const RELOAD_DELAY_MS = 400;
 const RESUBSCRIBE_DELAY_MS = 5000;
+let channelSequence = 0;
 
 const keyOf = (p: FeedParams) => `${p.day}|${p.search.trim().toLowerCase()}|${p.page}`;
 const newestFirst = (a: Attendance, b: Attendance) =>
@@ -196,7 +197,8 @@ export function useAttendanceFeed(params: FeedParams, onSessionExpired: () => vo
         return;
       }
       setRealtime(everLive ? 'reconnecting' : 'connecting');
-      const ch = supabase.channel(`attendance-feed-${crypto.randomUUID()}`);
+      // El nombre del canal debe funcionar también por HTTP en la red local.
+      const ch = supabase.channel(`attendance-feed-${Date.now()}-${++channelSequence}`);
       ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'attendance' }, (payload) => {
         void insertRef.current(payload.new);
       });
