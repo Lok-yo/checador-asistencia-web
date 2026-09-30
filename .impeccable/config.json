@@ -10,7 +10,7 @@
           "src/styles.css"
         ],
         "createdAt": "2026-09-29T22:49:44.414Z",
-        "reason": "Agent review: L72 is severity feedback for alerts; L147 separates definition-list counters rather than decorating cards; L174 and L263 preserve the entry/exit color markers visible in the supplied screenshot and the incumbent clock-card design. Remote focus uses a separate full yellow border. Retain this intentional functional design only in src/styles.css."
+        "reason": "Agent review: .notice marks alert severity; .counter separates definition-list totals rather than decorating cards; .punch and .punch--selectable retain the existing entry/exit movement markers shown in the supplied screenshots. Selection has its own full yellow border. Preserve these intentional functional indicators only in src/styles.css."
       }
     ]
   }
